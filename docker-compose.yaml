@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  poker-tracker:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data   # ← LE VOLUME PERSISTANT (poker.db survit aux redémarrages)
+    restart: unless-stopped
+    environment:
+      - PORT=3000

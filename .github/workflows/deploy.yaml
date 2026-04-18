@@ -1,0 +1,89 @@
+name: Build & Deploy Poker Tracker
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}   # ex: tonuser/poker-tracker
+
+jobs:
+
+  # ============================================================
+  #  1. BUILD & PUSH IMAGE
+  # ============================================================
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔑 Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # automatique, pas besoin de le créer
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: 🐳 Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha      # cache GitHub Actions → build + rapide
+          cache-to: type=gha,mode=max
+
+  # # ============================================================
+  # #  2. DEPLOY SUR TON SERVEUR
+  # # ============================================================
+  # deploy:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - name: 🚀 Deploy via SSH
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host:     ${{ secrets.SERVER_HOST }}      # IP de ton serveur
+  #         username: ${{ secrets.SERVER_USER }}      # ex: ubuntu
+  #         key:      ${{ secrets.SERVER_SSH_KEY }}   # clé privée SSH
+  #         script: |
+  #           # Login ghcr depuis le serveur
+  #           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io \
+  #             -u ${{ github.actor }} --password-stdin
+
+  #           # Pull la nouvelle image
+  #           docker pull ghcr.io/${{ github.repository }}:latest
+
+  #           # Restart avec la nouvelle image (zero downtime)
+  #           docker stop poker-tracker || true
+  #           docker rm   poker-tracker || true
+
+  #           docker run -d \
+  #             --name poker-tracker \
+  #             --restart unless-stopped \
+  #             -p 3000:3000 \
+  #             -v /opt/poker-data:/app/data \
+  #             ghcr.io/${{ github.repository }}:latest
+
+  #           echo "✅ Déployé !"

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Poker Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>🃏 Poker Tracker</h1>
+    <span id="header-date"></span>
+</header>
+
+<div class="tabs">
+    <button class="tab-btn active" onclick="showTab('players')">👥 Joueurs</button>
+    <button class="tab-btn" onclick="showTab('game')">🎮 Nouvelle Partie</button>
+    <button class="tab-btn" onclick="showTab('live')">🔴 En Direct</button>
+    <button class="tab-btn" onclick="showTab('history')">📋 Historique</button>
+    <button class="tab-btn" onclick="showTab('leaderboard')">🏆 Classement</button>
+</div>
+
+<!-- ===== JOUEURS ===== -->
+<div id="tab-players" class="section active">
+    <div class="card">
+        <div class="card-title">👥 Liste des Joueurs</div>
+        <div class="players-grid" id="players-list"></div>
+        <hr class="divider">
+        <div class="add-player-row">
+            <input type="text" id="new-player-input" placeholder="Nom du joueur..." maxlength="20"
+                onkeydown="if(event.key==='Enter') addPlayer()">
+            <button class="btn btn-green" onclick="addPlayer()">+ Ajouter</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== NOUVELLE PARTIE ===== -->
+<div id="tab-game" class="section">
+    <div class="card">
+        <div class="card-title">🎮 Configurer la Partie</div>
+        <p class="hint">Cliquez sur un joueur pour le sélectionner et entrez sa mise de départ.</p>
+
+        <div class="player-select-grid" id="game-player-select"></div>
+
+        <hr class="divider">
+
+        <div class="config-row">
+            <div class="config-field">
+                <label>Petite blind (€)</label>
+                <input type="number" id="small-blind" value="0.25" step="0.05" min="0.01" style="width:130px;">
+            </div>
+            <div class="config-field">
+                <label>Grosse blind (€)</label>
+                <input type="number" id="big-blind" value="0.50" step="0.05" min="0.01" style="width:130px;">
+            </div>
+            <button class="btn btn-gold launch-btn" onclick="startGame()">
+                🚀 Lancer la Partie
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== EN DIRECT ===== -->
+<div id="tab-live" class="section">
+    <div id="no-game-msg" class="empty-state">
+        <div class="icon">🎰</div>
+        <div>Aucune partie en cours.<br>Lance une nouvelle partie depuis <strong>Nouvelle Partie</strong>.</div>
+    </div>
+
+    <div id="live-content" style="display:none;">
+        <div class="live-game-header">
+            <div>
+                <div class="live-title">🔴 Partie en cours</div>
+                <div class="live-meta" id="live-meta"></div>
+            </div>
+            <div class="total-pot">
+                <div class="label">💰 Total en jeu</div>
+                <div class="amount" id="total-pot-display">0 €</div>
+            </div>
+            <button class="btn btn-red end-btn" onclick="openEndModal()">
+                🏁 Terminer la Partie
+            </button>
+        </div>
+
+        <div class="players-live-grid" id="players-live-grid"></div>
+    </div>
+</div>
+
+<!-- ===== HISTORIQUE ===== -->
+<div id="tab-history" class="section">
+    <div class="section-header">
+        <div class="section-title">📋 Historique des Parties</div>
+        <div class="section-actions">
+            <button class="btn btn-blue btn-sm" onclick="exportCSV()">📥 Export CSV</button>
+            <button class="btn btn-red btn-sm" onclick="clearHistory()">🗑️ Tout effacer</button>
+        </div>
+    </div>
+    <div id="history-list"></div>
+</div>
+
+<!-- ===== CLASSEMENT ===== -->
+<div id="tab-leaderboard" class="section">
+    <div class="section-header">
+        <div class="section-title">🏆 Classement Général</div>
+        <button class="btn btn-blue btn-sm" onclick="exportLeaderboardCSV()">📥 Export CSV</button>
+    </div>
+    <div id="all-games-summary" class="card"></div>
+    <div id="leaderboard-list"></div>
+</div>
+
+<!-- ===== MODAL FIN DE PARTIE ===== -->
+<div class="modal-overlay" id="end-modal">
+    <div class="modal">
+
+        <!-- ÉTAPE 1 : Argent rendu -->
+        <div id="step1">
+            <div class="modal-title">🏁 Fin de Partie — Étape 1/2</div>
+            <div class="modal-subtitle">
+                Entrez combien d'argent chaque joueur rend (en €).
+            </div>
+            <div id="end-modal-players"></div>
+
+            <!-- Résumé en temps réel -->
+            <div id="step1-totals" class="totals-box" style="display:none;">
+                <div class="total-row">
+                    <span>Total misé</span>
+                    <strong id="s1-total-bet">0 €</strong>
+                </div>
+                <div class="total-row">
+                    <span>Total rendu</span>
+                    <strong id="s1-total-returned">0 €</strong>
+                </div>
+                <div class="total-row flash-row">
+                    <span>⚡ Flash (écart)</span>
+                    <strong id="s1-flash">0 €</strong>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-red btn-sm" onclick="closeEndModal()">Annuler</button>
+                <button class="btn btn-gold" onclick="goToStep2()">Suivant ➜</button>
+            </div>
+        </div>
+
+        <!-- ÉTAPE 2 : Attribution du Flash -->
+        <div id="step2" style="display:none;">
+            <div class="modal-title">⚡ Fin de Partie — Étape 2/2</div>
+            <div class="modal-subtitle">
+                Attribuez le flash à un ou plusieurs joueurs pour que tout s'équilibre.
+            </div>
+
+            <!-- Tableau récap -->
+            <div id="step2-recap"></div>
+
+            <!-- Flash info -->
+            <div class="flash-info-box">
+                <div class="flash-info-row">
+                    <span>Flash total à distribuer :</span>
+                    <strong id="flash-total-display" style="color:var(--purple); font-size:1.2rem;">0 €</strong>
+                </div>
+                <p class="flash-hint">
+                    Ce montant peut être attribué à n'importe quel joueur (positif = il gagne ce flash, négatif = il le paie).
+                    La somme des attributions doit être égale au flash total.
+                </p>
+            </div>
+
+            <!-- Attributions par joueur -->
+            <div id="flash-assignments"></div>
+
+            <!-- Balance checker -->
+            <div class="balance-checker">
+                <div id="balance-status" class="balance-bad">⚠️ À distribuer : 0 €</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-red btn-sm" onclick="closeEndModal()">Annuler</button>
+                <button class="btn btn-blue btn-sm" onclick="backToStep1()">← Retour</button>
+                <button class="btn btn-green" id="confirm-end-btn" onclick="confirmEndGame()" disabled>
+                    ✅ Enregistrer la Partie
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
