@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}   # ex: tonuser/poker-tracker
+  IMAGE_NAME: ${{ github.repository }}   
 
 jobs:
 
@@ -31,7 +31,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}  # automatique, pas besoin de le créer
+          password: ${{ secrets.GITHUB_TOKEN }} 
 
       - name: 🏷️ Extract metadata
         id: meta
@@ -50,40 +50,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # cache-from: type=gha      # cache GitHub Actions → build + rapide
-          # cache-to: type=gha,mode=max
-
-  # # ============================================================
-  # #  2. DEPLOY SUR TON SERVEUR
-  # # ============================================================
-  # deploy:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: 🚀 Deploy via SSH
-  #       uses: appleboy/ssh-action@v1
-  #       with:
-  #         host:     ${{ secrets.SERVER_HOST }}      # IP de ton serveur
-  #         username: ${{ secrets.SERVER_USER }}      # ex: ubuntu
-  #         key:      ${{ secrets.SERVER_SSH_KEY }}   # clé privée SSH
-  #         script: |
-  #           # Login ghcr depuis le serveur
-  #           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io \
-  #             -u ${{ github.actor }} --password-stdin
-
-  #           # Pull la nouvelle image
-  #           docker pull ghcr.io/${{ github.repository }}:latest
-
-  #           # Restart avec la nouvelle image (zero downtime)
-  #           docker stop poker-tracker || true
-  #           docker rm   poker-tracker || true
-
-  #           docker run -d \
-  #             --name poker-tracker \
-  #             --restart unless-stopped \
-  #             -p 3000:3000 \
-  #             -v /opt/poker-data:/app/data \
-  #             ghcr.io/${{ github.repository }}:latest
-
-  #           echo "✅ Déployé !"
